@@ -2,15 +2,45 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Acta 9 de Julio - Cámara AR</title>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#002b5c">
+  <meta name="description" content="Acta 9 de Julio - Experiencia de Realidad Aumentada con Detección de Marcadores">
+  
+  <title>Acta 9 de Julio - Realidad Aumentada 3D</title>
+  
+  <!-- A-Frame Framework para WebAR -->
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  
+  <!-- AR.js para detección de marcadores -->
+  <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.5/aframe/aframe-ar-nft.js"></script>
+  
+  <!-- TensorFlow.js para visión por computadora (detección de marcadores mejorada) -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
+  
+  <!-- Three.js (incluido en A-Frame) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  
   <style>
-    body {
+    * {
       margin: 0;
-      background: black;
-      font-family: Arial, sans-serif;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
       overflow: hidden;
+      background: #000;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* Contenedor de escena AR */
+    #ar-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
     }
 
     video {
@@ -19,137 +49,1025 @@
       width: 100vw;
       height: 100vh;
       object-fit: cover;
-      background: black;
+      background: #000;
+      z-index: 0;
     }
 
-    .acta {
+    canvas {
       position: fixed;
-      top: 45%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 280px;
-      background: #f5e6d3;
-      border: 6px solid #8b5a2b;
-      border-radius: 14px;
-      padding: 18px;
-      text-align: center;
-      z-index: 2;
-      box-shadow: 0 10px 35px rgba(0,0,0,0.65);
+      top: 0;
+      left: 0;
+      z-index: 1;
     }
 
-    .acta h1 {
-      font-size: 24px;
-      margin: 0 0 10px;
-      color: #2c1810;
-    }
-
-    .acta p {
-      font-size: 16px;
-      color: #111;
-    }
-
-    .panel {
+    /* Escena A-Frame */
+    a-scene {
       position: fixed;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
-      z-index: 3;
-      background: rgba(255,255,255,0.94);
-      padding: 12px;
+      top: 0;
+      left: 0;
+      z-index: 5;
+    }
+
+    /* Panel de control */
+    .control-panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.95) 100%);
+      padding: 16px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 55vh;
+      overflow-y: auto;
+      border-top: 2px solid rgba(0,123,255,0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .status-box {
+      background: rgba(255,255,255,0.95);
       border-radius: 12px;
-      text-align: center;
+      padding: 14px;
+      font-size: 13px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 500;
+      margin: 6px 0;
+    }
+
+    .status-label {
+      color: #333;
+      font-size: 12px;
+    }
+
+    .status-value {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status-value.loading {
+      background: #ffc107;
+      color: #000;
+      animation: pulse-loading 1.5s infinite;
+    }
+
+    .status-value.active {
+      background: #28a745;
+      color: white;
+      box-shadow: 0 0 10px rgba(40,167,69,0.5);
+    }
+
+    .status-value.error {
+      background: #dc3545;
+      color: white;
+    }
+
+    .status-value.ready {
+      background: #007bff;
+      color: white;
+    }
+
+    .status-value.detected {
+      background: #17a2b8;
+      color: white;
+      animation: pulse-detect 1s infinite;
+    }
+
+    @keyframes pulse-loading {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    @keyframes pulse-detect {
+      0%, 100% { box-shadow: 0 0 8px rgba(23,162,184,0.5); }
+      50% { box-shadow: 0 0 20px rgba(23,162,184,1); }
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
     }
 
     button {
-      padding: 10px;
-      margin: 4px;
+      padding: 10px 12px;
       border: none;
       border-radius: 8px;
-      background: #0077cc;
-      color: white;
-      font-weight: bold;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
-    #estado {
-      font-weight: bold;
-      color: #b91c1c;
+    .btn-primary {
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      color: white;
+      box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+    }
+
+    .btn-primary:active {
+      transform: scale(0.95);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.9);
+      color: #333;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .btn-secondary:active {
+      transform: scale(0.95);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+      color: white;
+      box-shadow: 0 4px 8px rgba(220,53,69,0.3);
+    }
+
+    .info-box {
+      background: rgba(0,123,255,0.1);
+      border-left: 4px solid #007bff;
+      padding: 10px;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .info-box strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #fff;
+    }
+
+    /* Indicador de marcador detectado */
+    .marker-indicator {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: rgba(220,53,69,0.9);
+      border: 3px solid rgba(220,53,69,1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 101;
+      box-shadow: 0 0 20px rgba(220,53,69,0.5);
+      font-size: 32px;
+      animation: pulse-indicator 2s infinite;
+      flex-direction: column;
+    }
+
+    .marker-indicator.detected {
+      background: rgba(40,167,69,0.9);
+      border-color: rgba(40,167,69,1);
+      box-shadow: 0 0 25px rgba(40,167,69,0.8);
+      animation: pulse-success 1s infinite;
+    }
+
+    .marker-confidence {
+      font-size: 10px;
+      margin-top: 2px;
+      font-weight: 700;
+    }
+
+    @keyframes pulse-indicator {
+      0%, 100% {
+        box-shadow: 0 0 10px rgba(220,53,69,0.5);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 25px rgba(220,53,69,0.8);
+        transform: scale(1.05);
+      }
+    }
+
+    @keyframes pulse-success {
+      0%, 100% {
+        box-shadow: 0 0 10px rgba(40,167,69,0.7);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 30px rgba(40,167,69,1);
+        transform: scale(1.08);
+      }
+    }
+
+    /* Header */
+    .header-info {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 100%);
+      padding: 12px;
+      z-index: 99;
+      color: white;
+      font-size: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(8px);
+    }
+
+    .header-title {
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    /* Canvas de debug de marcadores */
+    #marker-canvas {
+      position: fixed;
+      top: 60px;
+      right: 100px;
+      width: 120px;
+      height: 90px;
+      border: 2px solid #007bff;
+      background: rgba(0,0,0,0.7);
+      border-radius: 8px;
+      z-index: 102;
+      display: none;
+    }
+
+    .canvas-label {
+      position: fixed;
+      top: 45px;
+      right: 105px;
+      font-size: 10px;
+      color: #007bff;
+      font-weight: 700;
+      z-index: 102;
+      display: none;
+    }
+
+    /* Mensaje de error */
+    .error-message {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(220,53,69,0.95);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      z-index: 200;
+      max-width: 85%;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+    }
+
+    .error-message.show {
+      display: block;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .control-panel {
+        padding: 12px;
+      }
+
+      .button-group {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      button {
+        padding: 8px;
+        font-size: 11px;
+      }
+
+      .marker-indicator {
+        width: 60px;
+        height: 60px;
+        font-size: 28px;
+      }
+
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+
+      #marker-canvas {
+        display: none !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .header-info {
+        font-size: 11px;
+      }
+
+      .header-title {
+        font-size: 14px;
+      }
+
+      .control-panel {
+        padding: 10px;
+        gap: 10px;
+      }
+
+      .button-group {
+        grid-template-columns: 1fr;
+      }
+
+      button {
+        padding: 10px;
+        font-size: 12px;
+      }
+
+      .marker-indicator {
+        width: 55px;
+        height: 55px;
+        font-size: 24px;
+        top: 15px;
+        right: 15px;
+      }
+
+      .info-box {
+        font-size: 10px;
+        padding: 8px;
+      }
+    }
+
+    /* Animación de carga */
+    .loading-spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
 
 <body>
+  <!-- Contenedor AR principal -->
+  <div id="ar-container">
+    <!-- Video stream de la cámara -->
+    <video id="video" autoplay playsinline muted></video>
 
-  <video id="video" autoplay playsinline muted></video>
+    <!-- Canvas para procesamiento de visión por computadora -->
+    <canvas id="canvas-detection"></canvas>
 
-  <div class="acta">
-    <h1>ACTA DE INDEPENDENCIA</h1>
-    <h2>🇦🇷 Argentina</h2>
-    <p><strong>9 de Julio de 1816</strong></p>
-    <p>San Miguel de Tucumán</p>
-    <p>Declaración de independencia de las Provincias Unidas en Sudamérica.</p>
+    <!-- Escena A-Frame con soporte AR.js -->
+    <a-scene 
+      embedded 
+      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_stereo;"
+      vr-mode-ui="enabled: false"
+      renderer="antialias: true; alpha: true; precision: medium; maxCanvasWidth: 1280; maxCanvasHeight: 720;"
+    >
+      <!-- Cámara A-Frame -->
+      <a-camera position="0 1.6 0" look-controls="enabled: false"></a-camera>
+
+      <!-- Marcador de patrón #1 -->
+      <a-marker type="pattern" url="data/pattern-marker.patt" id="marker1">
+        <!-- Contenedor del Acta 3D -->
+        <a-entity id="acta-3d" position="0 0 0" rotation="0 0 0" scale="1 1 1">
+          
+          <!-- Marco exterior decorativo -->
+          <a-box 
+            id="frame-outer"
+            position="0 0 -0.08"
+            width="0.7"
+            height="1.0"
+            depth="0.15"
+            color="#8b5a2b"
+            material="side: double; emissive: #4a2c15"
+            shadow="cast: true; receive: true"
+          ></a-box>
+
+          <!-- Papel del documento principal -->
+          <a-box 
+            id="paper-main"
+            position="0 0 -0.04"
+            width="0.65"
+            height="0.95"
+            depth="0.08"
+            color="#f5e6d3"
+            material="side: double; emissive: #d4cdc0"
+            shadow="cast: true; receive: true"
+          ></a-box>
+
+          <!-- Línea decorativa superior -->
+          <a-plane 
+            position="0 0.4 0"
+            width="0.6"
+            height="0.025"
+            color="#8b5a2b"
+            rotation="0 0 0"
+            material="emissive: #5a3a1a"
+          ></a-plane>
+
+          <!-- Línea decorativa inferior -->
+          <a-plane 
+            position="0 -0.4 0"
+            width="0.6"
+            height="0.025"
+            color="#8b5a2b"
+            rotation="0 0 0"
+            material="emissive: #5a3a1a"
+          ></a-plane>
+
+          <!-- Escudo argentino (representación 3D) -->
+          <a-sphere 
+            id="shield-bg"
+            position="-0.25 0.35 0.01"
+            radius="0.08"
+            color="#003d82"
+            segments-height="32"
+            segments-width="32"
+            shadow="cast: true; receive: true"
+            material="emissive: #002555"
+          ></a-sphere>
+
+          <!-- Escudo capa dorada -->
+          <a-sphere 
+            id="shield-gold"
+            position="-0.25 0.35 0.02"
+            radius="0.06"
+            color="#ffd700"
+            segments-height="32"
+            segments-width="32"
+            material="emissive: #ccaa00"
+            shadow="cast: true"
+          ></a-sphere>
+
+          <!-- Sello de fecha rojo -->
+          <a-cylinder 
+            id="date-seal"
+            position="0.25 0.35 0.02"
+            radius="0.07"
+            height="0.03"
+            color="#8b0000"
+            rotation="0 0 0"
+            material="emissive: #5a0000"
+            shadow="cast: true"
+          ></a-cylinder>
+
+          <!-- Textos 3D con fuentes grandes y visibles -->
+          <a-text 
+            id="text-acta"
+            value="ACTA DE"
+            position="0 0.25 0.02"
+            align="center"
+            scale="0.5 0.5 0.5"
+            color="#2c1810"
+            font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
+            negate="false"
+            material="emissive: #1a0f08"
+          ></a-text>
+
+          <!-- Texto: INDEPENDENCIA -->
+          <a-text 
+            id="text-independence"
+            value="INDEPENDENCIA"
+            position="0 0.15 0.02"
+            align="center"
+            scale="0.4 0.4 0.4"
+            color="#2c1810"
+            font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
+            negate="false"
+            material="emissive: #1a0f08"
+          ></a-text>
+
+          <!-- Texto: Fecha -->
+          <a-text 
+            id="text-date"
+            value="9 DE JULIO DE 1816"
+            position="0 0.05 0.02"
+            align="center"
+            scale="0.3 0.3 0.3"
+            color="#8b5a2b"
+            font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
+            negate="false"
+            material="emissive: #5a3a1a"
+          ></a-text>
+
+          <!-- Texto: Ubicación -->
+          <a-text 
+            id="text-location"
+            value="San Miguel de Tucuman"
+            position="0 -0.05 0.02"
+            align="center"
+            scale="0.25 0.25 0.25"
+            color="#555555"
+            font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
+            negate="false"
+            material="emissive: #333333"
+          ></a-text>
+
+          <!-- Elemento decorativo: línea de firmas simulada -->
+          <a-plane 
+            position="0 -0.25 0.02"
+            width="0.55"
+            height="0.15"
+            color="#e8e0d8"
+            material="side: front; emissive: #d4cdc0"
+          ></a-plane>
+
+          <!-- Puntos decorativos (esquinas) -->
+          <a-sphere 
+            position="-0.3 0.43 0.02"
+            radius="0.015"
+            color="#8b5a2b"
+            material="emissive: #5a3a1a"
+          ></a-sphere>
+          <a-sphere 
+            position="0.3 0.43 0.02"
+            radius="0.015"
+            color="#8b5a2b"
+            material="emissive: #5a3a1a"
+          ></a-sphere>
+          <a-sphere 
+            position="-0.3 -0.43 0.02"
+            radius="0.015"
+            color="#8b5a2b"
+            material="emissive: #5a3a1a"
+          ></a-sphere>
+          <a-sphere 
+            position="0.3 -0.43 0.02"
+            radius="0.015"
+            color="#8b5a2b"
+            material="emissive: #5a3a1a"
+          ></a-sphere>
+
+          <!-- Rotación suave en bucle -->
+          <a-animation 
+            attribute="rotation"
+            dur="8000"
+            to="0 360 0"
+            repeat="indefinite"
+            easing="linear"
+          ></a-animation>
+        </a-entity>
+      </a-marker>
+
+      <!-- Luz ambiental -->
+      <a-light type="ambient" color="white" intensity="0.9"></a-light>
+      
+      <!-- Luz direccional principal -->
+      <a-light 
+        type="directional" 
+        color="white" 
+        intensity="1.2" 
+        position="5 10 5"
+        shadow="cast: true; mapSize: 2048"
+      ></a-light>
+
+      <!-- Luz de relleno -->
+      <a-light type="point" color="white" intensity="0.8" position="-5 5 5"></a-light>
+    </a-scene>
+
+    <!-- Canvas de depuración de marcadores (solo para desarrollo) -->
+    <canvas id="marker-canvas"></canvas>
+    <div class="canvas-label">Detección</div>
   </div>
 
-  <div class="panel">
-    <div><strong>Acta 9 de Julio - Realidad Aumentada</strong></div>
-    <div>Estado: <span id="estado">Cámara no iniciada</span></div>
-    <button onclick="iniciar('trasera')">Cámara trasera</button>
-    <button onclick="iniciar('frontal')">Cámara frontal</button>
-    <button onclick="iniciar('auto')">Automática</button>
+  <!-- Indicador de marcador -->
+  <div class="marker-indicator" id="markerIndicator">
+    ❌
+    <div class="marker-confidence" id="markerConfidence">0%</div>
   </div>
+
+  <!-- Header -->
+  <div class="header-info">
+    <div class="header-title">🇦🇷 ACTA 9 DE JULIO - REALIDAD AUMENTADA 3D</div>
+    <div>Apunta tu cámara al marcador para ver el documento en 3D</div>
+  </div>
+
+  <!-- Panel de Control -->
+  <div class="control-panel">
+    <div class="status-box">
+      <div class="status-grid">
+        <div class="status-item">
+          <span class="status-label">Estado:</span>
+          <span class="status-value ready" id="statusState">Iniciando...</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Cámara:</span>
+          <span class="status-value loading" id="statusCamera">Buscando...</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Marcador:</span>
+          <span class="status-value error" id="statusMarker">No detectado</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">FPS:</span>
+          <span class="status-value ready" id="statusFPS">0</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Confianza IA:</span>
+          <span class="status-value ready" id="statusConfidence">0%</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Dispositivo:</span>
+          <span class="status-value ready" id="statusDevice">---</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box" id="instructions">
+      <strong>📋 Instrucciones de Uso:</strong>
+      1. Permite acceso a cámara<br>
+      2. Descarga e imprime el marcador<br>
+      3. Apunta la cámara al marcador<br>
+      4. ¡Disfruta el Acta en 3D!
+    </div>
+
+    <div class="button-group">
+      <button class="btn-primary" onclick="toggleAR()" id="btnToggle">Iniciar AR</button>
+      <button class="btn-secondary" onclick="downloadMarker()">Descargar</button>
+      <button class="btn-secondary" onclick="toggleDebug()">Debug</button>
+    </div>
+  </div>
+
+  <!-- Mensaje de error -->
+  <div class="error-message" id="errorMessage"></div>
 
   <script>
-    let streamActual = null;
+    // ========== CONFIGURACIÓN GLOBAL ==========
+    const config = {
+      isAREnabled: false,
+      markerDetected: false,
+      deviceType: 'unknown',
+      fps: 0,
+      frameCount: 0,
+      lastTime: Date.now(),
+      markerConfidence: 0,
+      debugMode: false,
+      useComputerVision: true
+    };
 
-    async function iniciar(tipo) {
-      const video = document.getElementById("video");
-      const estado = document.getElementById("estado");
+    let video, canvas, ctx;
+    let detectionModel = null;
 
-      if (streamActual) {
-        streamActual.getTracks().forEach(track => track.stop());
-      }
-
-      let opciones = [];
-
-      if (tipo === "trasera") {
-        opciones = [
-          { video: { facingMode: { exact: "environment" } }, audio: false },
-          { video: { facingMode: "environment" }, audio: false },
-          { video: true, audio: false }
-        ];
-      } else if (tipo === "frontal") {
-        opciones = [
-          { video: { facingMode: { exact: "user" } }, audio: false },
-          { video: { facingMode: "user" }, audio: false },
-          { video: true, audio: false }
-        ];
+    // ========== DETECCIÓN DE DISPOSITIVO ==========
+    function detectDevice() {
+      const ua = navigator.userAgent.toLowerCase();
+      if (/mobile|android|iphone|ipad|phone/i.test(ua)) {
+        config.deviceType = 'Móvil';
+      } else if (/ipad|tablet/i.test(ua)) {
+        config.deviceType = 'Tablet';
       } else {
-        opciones = [
-          { video: true, audio: false }
-        ];
+        config.deviceType = 'Desktop';
+      }
+      document.getElementById('statusDevice').textContent = config.deviceType;
+    }
+
+    // ========== VERIFICACIÓN DE SOPORTE ==========
+    function checkWebRTCSupport() {
+      const hasWebRTC = !!(
+        navigator.mediaDevices && 
+        navigator.mediaDevices.getUserMedia
+      );
+      const hasARjs = !!window.AFRAME && !!window.AFRAME.utils;
+      return hasWebRTC && hasARjs;
+    }
+
+    // ========== CÁLCULO DE FPS ==========
+    function updateFPS() {
+      config.frameCount++;
+      const currentTime = Date.now();
+      const elapsed = currentTime - config.lastTime;
+
+      if (elapsed >= 1000) {
+        config.fps = Math.round((config.frameCount * 1000) / elapsed);
+        config.frameCount = 0;
+        config.lastTime = currentTime;
+        document.getElementById('statusFPS').textContent = config.fps;
+      }
+    }
+
+    // ========== DETECCIÓN DE VISIÓN POR COMPUTADORA ==========
+    async function loadDetectionModel() {
+      try {
+        if (!window.cocoSsd) {
+          console.log('Cargando modelo COCO-SSD...');
+          return;
+        }
+        detectionModel = await window.cocoSsd.load();
+        console.log('Modelo COCO-SSD cargado correctamente');
+      } catch (error) {
+        console.error('Error al cargar modelo de visión:', error);
+      }
+    }
+
+    async function detectPatterns() {
+      if (!detectionModel || !video || video.readyState !== video.HAVE_ENOUGH_DATA) {
+        return;
       }
 
-      for (const config of opciones) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia(config);
-          streamActual = stream;
-          video.srcObject = stream;
-          await video.play();
+      try {
+        const predictions = await detectionModel.estimateObjects(video, 10);
+        
+        let maxConfidence = 0;
+        let patternFound = false;
 
-          estado.textContent = "Cámara activa";
-          estado.style.color = "green";
-          return;
-        } catch (error) {
-          console.log(error.name, error.message);
-          estado.textContent = error.name + ": " + error.message;
-          estado.style.color = "#b91c1c";
+        // Buscar patrones rectangulares (documentos)
+        for (let obj of predictions) {
+          if (obj.score > 0.5) {
+            const box = obj.bbox;
+            const width = box[2];
+            const height = box[3];
+            const aspect = Math.max(width, height) / Math.min(width, height);
+
+            // Detectar formas rectangulares (como documentos)
+            if (aspect > 0.8 && aspect < 2.0 && obj.score > maxConfidence) {
+              maxConfidence = obj.score;
+              patternFound = true;
+            }
+          }
+        }
+
+        config.markerConfidence = Math.round(maxConfidence * 100);
+        document.getElementById('statusConfidence').textContent = config.markerConfidence + '%';
+
+        // Dibujar en canvas de debug
+        if (config.debugMode && canvas && ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          for (let obj of predictions) {
+            if (obj.score > 0.3) {
+              const [x, y, w, h] = obj.bbox;
+              ctx.strokeStyle = obj.score > 0.6 ? '#00FF00' : '#FF6600';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(x, y, w, h);
+              ctx.fillStyle = ctx.strokeStyle;
+              ctx.font = '12px Arial';
+              ctx.fillText(`${obj.class} ${(obj.score * 100).toFixed(1)}%`, x, y - 5);
+            }
+          }
+        }
+
+        return patternFound;
+      } catch (error) {
+        console.error('Error en detección:', error);
+        return false;
+      }
+    }
+
+    // ========== ACTUALIZACIÓN DE ESTADO DE CÁMARA ==========
+    function updateCameraStatus() {
+      navigator.mediaDevices.enumerateDevices()
+        .then(devices => {
+          const hasCamera = devices.some(d => d.kind === 'videoinput');
+          const status = document.getElementById('statusCamera');
+          if (hasCamera) {
+            status.textContent = 'Disponible';
+            status.className = 'status-value active';
+          } else {
+            status.textContent = 'No encontrada';
+            status.className = 'status-value error';
+            showError('No se detectó cámara en el dispositivo');
+          }
+        })
+        .catch(err => {
+          console.error('Error al verificar cámara:', err);
+          document.getElementById('statusCamera').textContent = 'Error';
+          document.getElementById('statusCamera').className = 'status-value error';
+        });
+    }
+
+    // ========== CONTROL DE AR ==========
+    function toggleAR() {
+      if (!checkWebRTCSupport()) {
+        showError('Este navegador no soporta AR. Usa Chrome, Firefox o Safari.');
+        return;
+      }
+
+      config.isAREnabled = !config.isAREnabled;
+      const btn = document.getElementById('btnToggle');
+      
+      if (config.isAREnabled) {
+        btn.textContent = 'Detener AR';
+        btn.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+        document.getElementById('statusState').textContent = 'Activo';
+        updateCameraStatus();
+        
+        // Iniciar loop de detección
+        detectLoop();
+      } else {
+        btn.textContent = 'Iniciar AR';
+        btn.style.background = 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)';
+        document.getElementById('statusState').textContent = 'Pausado';
+      }
+    }
+
+    // ========== LOOP DE DETECCIÓN ==========
+    async function detectLoop() {
+      if (!config.isAREnabled) return;
+
+      updateFPS();
+
+      // Detección por visión por computadora
+      if (config.useComputerVision) {
+        const aiDetected = await detectPatterns();
+        if (aiDetected && config.markerConfidence > 50) {
+          updateMarkerIndicator(true, config.markerConfidence);
         }
       }
 
-      alert("No se pudo abrir la cámara. Revisá permisos de Chrome.");
+      requestAnimationFrame(detectLoop);
     }
 
-    iniciar("trasera");
-  </script>
+    // ========== ACTUALIZACIÓN DE INDICADOR DE MARCADOR ==========
+    function updateMarkerIndicator(detected, confidence = 0) {
+      const indicator = document.getElementById('markerIndicator');
+      const markerStatus = document.getElementById('statusMarker');
+      const confidenceDisplay = document.getElementById('markerConfidence');
 
+      if (detected) {
+        indicator.classList.add('detected');
+        indicator.textContent = '✅';
+        markerStatus.textContent = 'Detectado';
+        markerStatus.className = 'status-value detected';
+        confidenceDisplay.textContent = confidence + '%';
+        config.markerDetected = true;
+      } else {
+        indicator.classList.remove('detected');
+        indicator.textContent = '❌';
+        markerStatus.textContent = 'No detectado';
+        markerStatus.className = 'status-value error';
+        confidenceDisplay.textContent = '0%';
+        config.markerDetected = false;
+      }
+    }
+
+    // ========== DESCARGA DE MARCADOR ==========
+    function downloadMarker() {
+      // Crear marcador simple para pruebas
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 400;
+      const ctx = canvas.getContext('2d');
+      
+      // Fondo blanco
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 400, 400);
+      
+      // Marco negro grueso
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 30;
+      ctx.strokeRect(15, 15, 370, 370);
+      
+      // Patrones de detección (esquinas)
+      ctx.fillStyle = '#000000';
+      const squareSize = 80;
+      ctx.fillRect(30, 30, squareSize, squareSize);
+      ctx.fillRect(290, 30, squareSize, squareSize);
+      ctx.fillRect(30, 290, squareSize, squareSize);
+      
+      // Patrón central
+      const center = 200;
+      const patternSize = 40;
+      ctx.fillRect(center - patternSize, center - patternSize, patternSize * 2, patternSize * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(center - patternSize + 10, center - patternSize + 10, (patternSize * 2) - 20, (patternSize * 2) - 20);
+      
+      // Texto
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 28px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('MARCADOR AR', 200, 200);
+      ctx.font = '18px Arial';
+      ctx.fillText('Acta 9 de Julio', 200, 235);
+      
+      // Descargar
+      canvas.toBlob(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'marcador-acta-9-julio.png';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      });
+    }
+
+    // ========== TOGGLE DEBUG ==========
+    function toggleDebug() {
+      config.debugMode = !config.debugMode;
+      const debugCanvas = document.getElementById('marker-canvas');
+      const debugLabel = document.querySelector('.canvas-label');
+      
+      if (config.debugMode) {
+        debugCanvas.style.display = 'block';
+        debugLabel.style.display = 'block';
+      } else {
+        debugCanvas.style.display = 'none';
+        debugLabel.style.display = 'none';
+      }
+    }
+
+    // ========== MOSTRAR ERROR ==========
+    function showError(message) {
+      const errorDiv = document.getElementById('errorMessage');
+      errorDiv.textContent = message;
+      errorDiv.classList.add('show');
+      setTimeout(() => {
+        errorDiv.classList.remove('show');
+      }, 5000);
+    }
+
+    // ========== DETECCIÓN DE PERMISO DE CÁMARA ==========
+    async function checkCameraPermission() {
+      try {
+        const result = await navigator.permissions.query({ name: 'camera' });
+        if (result.state === 'granted') {
+          document.getElementById('statusCamera').textContent = 'Autorizada';
+          document.getElementById('statusCamera').className = 'status-value active';
+          return true;
+        } else if (result.state === 'denied') {
+          showError('Permiso de cámara denegado. Verifica configuración.');
+          return false;
+        }
+      } catch (err) {
+        console.log('No se puede verificar permisos');
+      }
+      return true;
+    }
+
+    // ========== INICIALIZACIÓN ==========
+    window.addEventListener('DOMContentLoaded', async () => {
+      detectDevice();
+      video = document.getElementById('video');
+      canvas = document.getElementById('marker-canvas');
+      ctx = canvas ? canvas.getContext('2d') : null;
+
+      // Ajustar tamaño del canvas de debug
+      if (canvas) {
+        canvas.width = 120;
+        canvas.height = 90;
+      }
+
+      await checkCameraPermission();
+      updateCameraStatus();
+      await loadDetectionModel();
+      
+      // Auto iniciar AR en 1.5 segundos
+      setTimeout(() => {
+        if (checkWebRTCSupport()) {
+          document.getElementById('statusState').textContent = 'Listo';
+        }
+      }, 1500);
+    });
+
+    // ========== MANEJO DE VISIBILIDAD ==========
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        if (config.isAREnabled) {
+          toggleAR();
+        }
+      }
+    });
+
+    // ========== PREVENIR SCROLL ==========
+    document.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+    }, { passive: false });
+  </script>
 </body>
 </html>
