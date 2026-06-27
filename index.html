@@ -3,39 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Prueba AR - Acta 9 de Julio</title>
-
-  <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
+  <title>Acta 9 de Julio - Cámara AR</title>
 
   <style>
     body {
       margin: 0;
-      overflow: hidden;
+      background: black;
       font-family: Arial, sans-serif;
+      overflow: hidden;
     }
 
-    #panel {
+    video {
       position: fixed;
-      bottom: 10px;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      background: black;
+    }
+
+    .acta {
+      position: fixed;
+      top: 45%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 280px;
+      background: #f5e6d3;
+      border: 6px solid #8b5a2b;
+      border-radius: 14px;
+      padding: 18px;
+      text-align: center;
+      z-index: 2;
+      box-shadow: 0 10px 35px rgba(0,0,0,0.65);
+    }
+
+    .acta h1 {
+      font-size: 24px;
+      margin: 0 0 10px;
+      color: #2c1810;
+    }
+
+    .acta p {
+      font-size: 16px;
+      color: #111;
+    }
+
+    .panel {
+      position: fixed;
       left: 10px;
       right: 10px;
-      z-index: 999;
-      background: rgba(255,255,255,0.92);
+      bottom: 10px;
+      z-index: 3;
+      background: rgba(255,255,255,0.94);
       padding: 12px;
       border-radius: 12px;
-      color: #111;
-      font-size: 15px;
+      text-align: center;
     }
 
     button {
       padding: 10px;
+      margin: 4px;
       border: none;
       border-radius: 8px;
       background: #0077cc;
       color: white;
       font-weight: bold;
-      margin-top: 6px;
     }
 
     #estado {
@@ -47,60 +79,76 @@
 
 <body>
 
-  <div id="panel">
-    <div><strong>AR Acta 9 de Julio</strong></div>
-    <div>Estado: <span id="estado">Buscando marcador...</span></div>
-    <button onclick="abrirMarcador()">Ver marcador HIRO</button>
+  <video id="video" autoplay playsinline muted></video>
+
+  <div class="acta">
+    <h1>ACTA DE INDEPENDENCIA</h1>
+    <h2>🇦🇷 Argentina</h2>
+    <p><strong>9 de Julio de 1816</strong></p>
+    <p>San Miguel de Tucumán</p>
+    <p>Declaración de independencia de las Provincias Unidas en Sudamérica.</p>
   </div>
 
-  <a-scene
-    embedded
-    vr-mode-ui="enabled: false"
-    renderer="antialias: true; alpha: true"
-    arjs="sourceType: webcam; debugUIEnabled: false;">
-
-    <a-marker preset="hiro" id="marcador">
-
-      <a-box
-        position="0 0.5 0"
-        rotation="0 45 0"
-        color="red"
-        depth="1"
-        height="1"
-        width="1"
-        animation="property: rotation; to: 0 405 0; loop: true; dur: 3000">
-      </a-box>
-
-      <a-text
-        value="ACTA 9 DE JULIO"
-        position="-1 1.3 0"
-        rotation="-90 0 0"
-        color="blue"
-        width="4">
-      </a-text>
-
-    </a-marker>
-
-    <a-entity camera></a-entity>
-  </a-scene>
+  <div class="panel">
+    <div><strong>Acta 9 de Julio - Realidad Aumentada</strong></div>
+    <div>Estado: <span id="estado">Cámara no iniciada</span></div>
+    <button onclick="iniciar('trasera')">Cámara trasera</button>
+    <button onclick="iniciar('frontal')">Cámara frontal</button>
+    <button onclick="iniciar('auto')">Automática</button>
+  </div>
 
   <script>
-    const marcador = document.querySelector("#marcador");
-    const estado = document.querySelector("#estado");
+    let streamActual = null;
 
-    marcador.addEventListener("markerFound", () => {
-      estado.textContent = "Marcador detectado";
-      estado.style.color = "green";
-    });
+    async function iniciar(tipo) {
+      const video = document.getElementById("video");
+      const estado = document.getElementById("estado");
 
-    marcador.addEventListener("markerLost", () => {
-      estado.textContent = "Buscando marcador...";
-      estado.style.color = "#b91c1c";
-    });
+      if (streamActual) {
+        streamActual.getTracks().forEach(track => track.stop());
+      }
 
-    function abrirMarcador() {
-      window.open("https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png", "_blank");
+      let opciones = [];
+
+      if (tipo === "trasera") {
+        opciones = [
+          { video: { facingMode: { exact: "environment" } }, audio: false },
+          { video: { facingMode: "environment" }, audio: false },
+          { video: true, audio: false }
+        ];
+      } else if (tipo === "frontal") {
+        opciones = [
+          { video: { facingMode: { exact: "user" } }, audio: false },
+          { video: { facingMode: "user" }, audio: false },
+          { video: true, audio: false }
+        ];
+      } else {
+        opciones = [
+          { video: true, audio: false }
+        ];
+      }
+
+      for (const config of opciones) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia(config);
+          streamActual = stream;
+          video.srcObject = stream;
+          await video.play();
+
+          estado.textContent = "Cámara activa";
+          estado.style.color = "green";
+          return;
+        } catch (error) {
+          console.log(error.name, error.message);
+          estado.textContent = error.name + ": " + error.message;
+          estado.style.color = "#b91c1c";
+        }
+      }
+
+      alert("No se pudo abrir la cámara. Revisá permisos de Chrome.");
     }
+
+    iniciar("trasera");
   </script>
 
 </body>
