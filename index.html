@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acta de Independencia 9 de Julio - Realidad Aumentada</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a-scene 
+        embedded 
+        arjs='sourceType: webcam; debugUIEnabled: false;' 
+        renderer='antialias: true; alpha: true'
+        vr-mode-ui='enabled: false'>
+        
+        <!-- Cámara con gestos -->
+        <a-camera position="0 1.6 0" look-controls wasd-controls></a-camera>
+        
+        <!-- Marker (para detectar patrón) -->
+        <a-marker type="pattern" url="data/pattern-marker.patt" smooth='true' smoothCount='10'>
+            <!-- Acta 3D -->
+            <a-box 
+                id="acta" 
+                position="0 0 0" 
+                rotation="-1.57 0 0"
+                width="0.5" 
+                height="0.7" 
+                depth="0.02"
+                color="#f5e6d3"
+                shadow>
+                <!-- Texto del Acta -->
+                <a-text 
+                    value="ACTA DE INDEPENDENCIA
+ARGENTINA
+9 DE JULIO DE 1816"
+                    align="center"
+                    position="0 0 0.015"
+                    scale="0.8 0.8 0.8"
+                    color="#2c1810"
+                    font="https://cdn.aframe.io/fonts/DejaVu-sdf.fnt"></a-text>
+            </a-box>
+            
+            <!-- Decoración patriótica -->
+            <a-cone 
+                position="-0.35 0.5 0"
+                radius-top="0.05"
+                radius-bottom="0.05"
+                height="0.2"
+                color="#4a90e2"
+                shadow>
+            </a-cone>
+            
+            <a-cone 
+                position="0.35 0.5 0"
+                radius-top="0.05"
+                radius-bottom="0.05"
+                height="0.2"
+                color="#f39c12"
+                shadow>
+            </a-cone>
+            
+            <!-- Efecto de luz -->
+            <a-light type="directional" intensity="1" position="0 2 2" shadow></a-light>
+            <a-light type="ambient" intensity="0.6"></a-light>
+        </a-marker>
+        
+        <!-- Iluminación global -->
+        <a-sky color="#87CEEB"></a-sky>
+    </a-scene>
+    
+    <!-- Interfaz de usuario -->
+    <div id="info-panel">
+        <button id="toggle-info" class="btn-info">📋 Ver Información</button>
+        <div id="info-content" class="hidden">
+            <h2>Acta de Independencia Argentina</h2>
+            <p><strong>Fecha:</strong> 9 de Julio de 1816</p>
+            <p><strong>Lugar:</strong> San Miguel de Tucumán</p>
+            <p><strong>Evento histórico:</strong> Declaración de independencia de las Provincias Unidas en Sudamérica del Reino Unido de España y Portugal.</p>
+            <p>El Acta fue firmada por 29 diputados, representando a las provincias argentinas, declarando formalmente la independencia de la Corona Española.</p>
+        </div>
+    </div>
+    
+    <div id="instructions">
+        <h1>🇦🇷 Realidad Aumentada - Acta 9 de Julio</h1>
+        <p>⬇️ Imprime el marcador de abajo para ver la Realidad Aumentada</p>
+        <p>📱 O apunta tu cámara al código patrón</p>
+        <button id="print-marker" class="btn-print">🖨️ Imprimir Marcador</button>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
