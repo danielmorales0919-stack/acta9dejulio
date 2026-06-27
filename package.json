@@ -1,0 +1,29 @@
+{
+  "name": "acta-9-julio-ar",
+  "version": "1.0.0",
+  "description": "Aplicación de Realidad Aumentada para el Acta de Independencia Argentina del 9 de Julio",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "npx http-server"
+  },
+  "keywords": [
+    "AR",
+    "realidad aumentada",
+    "Argentina",
+    "independencia",
+    "9 de julio",
+    "A-Frame",
+    "WebAR"
+  ],
+  "author": "Daniel Morales",
+  "license": "MIT",
+  "dependencies": {
+    "aframe": "^1.4.2",
+    "aframe-extras": "^6.1.1",
+    "ar.js": "^3.4.5"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
